@@ -16,45 +16,45 @@ mission: your-project-name
 [![Platform](https://img.shields.io/badge/Platform-Claude_Code|Cursor|OpenClaw-8A2BE2)]()
 [![Version](https://img.shields.io/badge/Version-0.1-blue)]()
 
-**English** | [中文](README.zh-CN.md)
+[English](README.md) | **中文**
 
 </div>
 
 ---
 
-## What is Missions Framework?
+## 什么是 Missions Framework？
 
 Missions Framework 是一个**纯文件系统驱动的多智能体软件工程框架**。它把 AI 助手转变为自管理的工程团队，通过文件夹状态机自动驱动：
 
-- 🧠 **Orchestrator** — 规划目标、拆解任务、锁定验证合约
-- 🔧 **Worker** — 用 TDD 实现功能
-- 🕵️ **Validator** — 独立验证实现质量
-- 📝 **PR Author** — 汇总证据生成 PR 描述
+| 角色 | 职责 |
+|------|------|
+| 🧠 **Orchestrator（编排者）** | 规划目标、拆解任务、锁定验证合约 |
+| 🔧 **Worker（工人）** | 用 TDD 实现功能，每次全新上下文 |
+| 🕵️ **Validator（验证者）** | 独立验证实现，不看实现细节 |
+| 📝 **PR Author（PR 作者）** | 汇总证据生成 PR 描述 |
 
-> **核心理念**: *"文件夹即状态机。Markdown 即指令。文件移动即状态转移。"*
+> **核心理念**：*"文件夹即状态机。Markdown 即指令。文件移动即状态转移。"*
 
-### 关键区别
+### 与其他框架的区别
 
-与常见的 AI 编程框架不同，Missions Framework：
-
-| 特性 | 本框架 | 其他框架 |
-|------|--------|---------|
-| **依赖** | ❌ 零依赖 — 纯文件系统 | 通常需要 Python/Node/CLI |
-| **状态机** | ✅ 文件夹即状态 | 通常内存/数据库存储 |
-| **角色** | ✅ 多角色自动路由 | 单一角色 |
-| **验证** | ✅ 合约预锁定 + 独立验证 | 通常无 |
-| **安装** | `cp -r` 一行命令 | 通常复杂的 CLI 安装 |
+| 特性 | Missions Framework | 其他 AI 编程框架 |
+|------|-------------------|-----------------|
+| **运行时依赖** | ❌ 零依赖 — 纯文件系统 | 通常需要 Python/Node/CLI |
+| **状态存储** | ✅ 文件夹即状态 | 数据库/内存 |
+| **角色分离** | ✅ 4 角色自动路由 | 单角色 |
+| **验证机制** | ✅ 合约预锁定 + 独立验证 | 人工 Review |
+| **安装方式** | ✅ `cp -r` 一行命令 | 复杂 CLI 安装 |
 
 ---
 
-## Architecture
+## 架构概览
 
 ```
                         ┌─────────────┐
                         │  CONTRACT   │
-                        │  (locked)   │
+                        │  (已锁定)    │
                         └──────┬──────┘
-                               │ reads
+                               │ 读取
           ┌─────────────────────┼─────────────────────┐
           │                     │                     │
           ▼                     ▼                     ▼
@@ -71,7 +71,7 @@ Missions Framework 是一个**纯文件系统驱动的多智能体软件工程�
     │ 待领取    │         │ 待验证   │         │ 已完成   │
     └──────────┘         └──────────┘         └──────────┘
                                │
-                               │ blocking?
+                               │ 有 blocking?
                                ▼
                          ┌──────────┐
                          │06-fix/   │
@@ -83,7 +83,7 @@ Missions Framework 是一个**纯文件系统驱动的多智能体软件工程�
 
 ---
 
-## State Machine
+## 状态机
 
 ```
 02-ready/     ──[Worker 领取]─────▶  03-running/    (进行中，最多1个)
@@ -97,7 +97,7 @@ Missions Framework 是一个**纯文件系统驱动的多智能体软件工程�
 
 ---
 
-## Quick Start
+## 快速开始
 
 ### 1. 安装
 
@@ -116,7 +116,7 @@ cp -r missions-framework/ .missions
 
 Claude 会自动循环执行：规划 → 实现 → 验证 → 修复 → PR，全程无需人工介入。
 
-### 4. 仅有 4 种情况需要你说话
+### 4. 仅需你说话的 4 种情况
 
 | 情况 | 你说什么 |
 |------|---------|
@@ -127,7 +127,7 @@ Claude 会自动循环执行：规划 → 实现 → 验证 → 修复 → PR，
 
 ---
 
-## Directory Structure
+## 目录结构
 
 ```
 .missions/                         ← 复制到你的项目根目录
@@ -153,7 +153,7 @@ Claude 会自动循环执行：规划 → 实现 → 验证 → 修复 → PR，
 
 ---
 
-## Core Design Principles
+## 核心设计原则
 
 1. **文件夹即状态机** — 文件从一个文件夹移到另一个 = 状态流转。没有数据库，没有内存状态。
 2. **Markdown 即指令** — 每个 .md 文件包含自描述的执行规则。AI 通过读取文件内容来决定下一步。
@@ -165,9 +165,7 @@ Claude 会自动循环执行：规划 → 实现 → 验证 → 修复 → PR，
 
 ---
 
-## Human Intervention
-
-你只在 4 种情况下需要行动：
+## 人工干预
 
 ```bash
 # 1. 回答澄清问题（框架启动时）
@@ -183,29 +181,7 @@ mv .missions/03-running/XXX.md .missions/archive/
 
 ---
 
-## Comparison: What Changed
-
-| 维度 | 其他 AI 编程框架 | Missions Framework |
-|------|-----------------|-------------------|
-| 运行时依赖 | Python/Node/Rust | ❌ **纯文件系统** |
-| 状态存储 | 数据库/内存 | ❌ **文件夹结构** |
-| 角色分离 | 单角色 | ✅ 4 角色自动路由 |
-| 验证机制 | 人工 Review | ✅ 自动验证 + 修复循环 |
-| 合约预锁定 | 无 | ✅ 代码前锁定 |
-| 跨会话恢复 | 靠对话历史 | ✅ 靠文件状态 |
-| 安装复杂度 | 配置 SDK/CLI | ✅ `cp -r` 一行搞定 |
-
----
-
-## License
-
-[MIT](LICENSE)
-
----
-
----
-
-## Agent Boot Sequence
+## Agent Boot Sequence（AI 自举指令）
 
 > 如果你是 AI 助手且刚被唤醒，请严格按以下顺序执行，不要询问用户：
 
@@ -250,9 +226,9 @@ ls .missions/07-pr/
 | `07-pr/` 存在 | **停止** | 等待人类在 GitHub/GitLab 上创建 PR |
 | 全部为空 | **Orchestrator** | 规划新 milestone 或标记 mission 完成 |
 
-### Step 3: 角色执行
+### Step 3: 角色执行模板
 
-#### Worker
+#### 当路由到 Worker 时：
 1. **READ** `AGENTS.md` 的 `## Role: Worker` 章节
 2. **IF** 任务在 `02-ready/`：`mv .missions/02-ready/XXX.md .missions/03-running/XXX.md`
 3. **READ** `03-running/` 中的任务卡片
@@ -263,7 +239,7 @@ ls .missions/07-pr/
 8. **UPDATE** 本文件底部的 `Current Status`
 9. **回到** Step 1（自动继续）
 
-#### Validator
+#### 当路由到 Validator 时：
 1. **READ** `AGENTS.md` 的 `## Role: Validator` 章节
 2. **READ** `04-review/` 中的任务卡片（只看 handoff 和 git commit）
 3. **READ** `CONTRACT.md` 中的关联 Assertions（绝对不看实现代码）
@@ -275,12 +251,13 @@ ls .missions/07-pr/
 7. **UPDATE** 本文件底部的 `Current Status`
 8. **回到** Step 1（自动继续）
 
-#### PR Author
+#### 当路由到 PR Author 时：
 1. **READ** `AGENTS.md` 的 `## Role: PR Author` 章节
 2. **检测**：扫描 `05-done/`，按 `milestone_id` 分组
 3. **IF** 某个 Milestone 的所有 Features 都在 `05-done/`：
    - 读取该 Milestone 下所有 Feature 的 Handoff 和 Validation Report
-   - 生成 `07-pr/PR-{milestone-id}.md`（变更摘要 / 验证汇总 / Contract 覆盖矩阵 / 测试报告 / 审查要点）
+   - 生成 `07-pr/PR-{milestone-id}.md`
+   - 包含：变更摘要、验证汇总、Contract 覆盖矩阵、测试报告、需要人工审查的点
    - 更新本文件底部的 `Current Status`
 4. **停止**，等待人类在 GitHub/GitLab 上创建 PR
 5. 人类合并后：`mv .missions/07-pr/PR-xxx.md .missions/08-merged/`
@@ -315,6 +292,10 @@ queue_pr: 0
 
 ---
 
-## Changelog
+## 许可
+
+[MIT](LICENSE)
+
+## 更新日志
 
 - **v0.1** (2026-06-28): 初始发布。四角色、文件系统状态机、先验契约、零脚本驱动。
