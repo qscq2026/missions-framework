@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Missions 多 Agent 框架原理说明书</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            line-height: 1.8;
+            color: #333;
+            background: #f5f7fa;
+            padding: 0;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: #fff;
+            padding: 60px 50px;
+            box-shadow: 0 2px 20px rgba(0,0,0,0.08);
+        }
+        h1 {
+            font-size: 2.4em;
+            color: #1a1a2e;
+            margin-bottom: 10px;
+            border-bottom: 3px solid #e94560;
+            padding-bottom: 15px;
+        }
+        .meta {
+            color: #888;
+            font-size: 0.9em;
+            margin-bottom: 40px;
+        }
+        h2 {
+            font-size: 1.6em;
+            color: #1a1a2e;
+            margin: 40px 0 20px;
+            padding-left: 15px;
+            border-left: 4px solid #e94560;
+        }
+        h3 {
+            font-size: 1.2em;
+            color: #16213e;
+            margin: 30px 0 15px;
+        }
+        p { margin-bottom: 15px; }
+
+        .mindmap {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 30px;
+            margin: 25px 0;
+            overflow-x: auto;
+        }
+        .mindmap svg { display: block; margin: 0 auto; }
+
+        .flowchart {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 30px;
+            margin: 25px 0;
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 0.95em;
+        }
+        th {
+            background: #1a1a2e;
+            color: #fff;
+            padding: 12px 15px;
+            text-align: left;
+            font-weight: 500;
+        }
+        td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #e8e8e8;
+        }
+        tr:hover { background: #f8f9fa; }
+
+        pre {
+            background: #1a1a2e;
+            color: #e8e8e8;
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-family: 'SF Mono', Monaco, monospace;
+            font-size: 0.85em;
+            line-height: 1.6;
+            margin: 20px 0;
+        }
+        code {
+            font-family: 'SF Mono', Monaco, monospace;
+            background: #f0f0f0;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 0.9em;
+        }
+        pre code { background: none; padding: 0; }
+
+        blockquote {
+            border-left: 4px solid #e94560;
+            padding: 15px 20px;
+            margin: 20px 0;
+            background: #fff5f7;
+            border-radius: 0 8px 8px 0;
+        }
+        blockquote p { margin: 0; }
+
+        .toc {
+            background: #f8f9fa;
+            padding: 25px 30px;
+            border-radius: 12px;
+            margin: 30px 0;
+        }
+        .toc h3 { margin-top: 0; }
+        .toc ul { list-style: none; padding-left: 0; }
+        .toc li { padding: 5px 0; }
+        .toc a { color: #e94560; text-decoration: none; }
+        .toc a:hover { text-decoration: underline; }
+
+        .tag {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            font-weight: 500;
+        }
+        .tag-green { background: #d4edda; color: #155724; }
+        .tag-red { background: #f8d7da; color: #721c24; }
+        .tag-blue { background: #d1ecf1; color: #0c5460; }
+        .tag-yellow { background: #fff3cd; color: #856404; }
+
+        .diagram-box {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+            padding: 25px;
+            border-radius: 12px;
+            margin: 20px 0;
+        }
+        .diagram-box h4 { margin-bottom: 15px; }
+
+        @media print {
+            body { background: #fff; }
+            .container { box-shadow: none; padding: 20px; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+
+<h1>🚀 Missions 多 Agent 框架原理说明书</h1>
+<p class="meta">版本: v0.1 | 日期: 2026-06-28 | 设计哲学: 文件夹即状态机，Markdown 即指令</p>
+
+<div class="toc">
+<h3>📑 目录</h3>
+<ul>
+<li><a href="#philosophy">1. 设计哲学</a></li>
+<li><a href="#problems">2. 核心问题</a></li>
+<li><a href="#architecture">3. 系统架构</a></li>
+<li><a href="#state-machine">4. 状态机设计</a></li>
+<li><a href="#files">5. 文件结构详解</a></li>
+<li><a href="#roles">6. 角色协议</a></li>
+<li><a href="#workflow">7. 工作流详解</a></li>
+<li><a href="#comparison">8. 与现有方案对比</a></li>
+<li><a href="#future">9. 局限性与未来</a></li>
+</ul>
+</div>
+
+<h2 id="philosophy">1. 设计哲学</h2>
+
+<blockquote>
+<p><strong>"瓶颈不是智能，而是人类注意力。"</strong></p>
+<p>前沿模型已能并行处理 50 个任务，但人类工程师同时只能关注 3-4 个线程。</p>
+</blockquote>
+
+<h3>1.1 关键洞察</h3>
+<table>
+<tr><th>洞察</th><th>来源</th><th>解决方案</th></tr>
+<tr><td>自我评估偏见</td><td>Factory 实践</td><td>实现者/评估者绝对分离</td></tr>
+<tr><td>上下文稀释</td><td>Factory 实践</td><td>短轨迹 + 结构化交接</td></tr>
+<tr><td>状态碎片化</td><td>多 Agent 通信</td><td>中心化编排 + 文件系统状态机</td></tr>
+<tr><td>契约漂移</td><td>传统 TDD</td><td>先验锁定验证契约</td></tr>
+</table>
+
+<h3>1.2 设计原则</h3>
+<ol>
+<li><strong>文件夹即状态机</strong>：文件移动 = 状态流转，无需数据库</li>
+<li><strong>Markdown 即指令</strong>：每个文件包含自描述的执行规则</li>
+<li><strong>零脚本依赖</strong>：纯文件系统驱动，任何环境可用</li>
+<li><strong>三角色分离</strong>：规划、实现、验证由不同"人格"执行</li>
+<li><strong>先验契约</strong>：代码之前锁定验收标准，不可事后修改</li>
+</ol>
+
+<h2 id="problems">2. 核心问题</h2>
+
+<h3>2.1 单 Agent 长任务的失败模式</h3>
+
+<pre>
+┌─────────────────────────────────────────────────────────────┐
+│  单 Agent 长任务（如"实现一个 Slack 克隆"）                      │
+├─────────────────────────────────────────────────────────────┤
+│  Step 1: 写代码 100 行 ✓                                      │
+│  Step 2: 写代码 200 行 ✓                                      │
+│  Step 3: 发现 Step 1 有 bug，但上下文已稀释，信号比 38%          │
+│  Step 4: 试图修复，但自我评估偏见导致"合理化"而非"找问题"        │
+│  Step 5: 5000 行后，代码能跑但架构腐烂，测试是"对实现的追认"    │
+│  Step 6: 人类审查时发现根本性问题，需重写                       │
+└─────────────────────────────────────────────────────────────┘
+</pre>
+
+<p><strong>根本原因</strong>：</p>
+<ul>
+<li><strong>Context Dilution</strong>：任务边界变宽，每一步有用上下文占比下降</li>
+<li><strong>Self-Evaluation Bias</strong>：实现者会从自己之前的推理中寻求连贯性，无法客观评估</li>
+<li><strong>Append-only Trajectory</strong>：Agent 的推理轨迹是只增不减的，错误会累积</li>
+</ul>
+
+<h3>2.2 传统多 Agent 框架的问题</h3>
+<table>
+<tr><th>问题</th><th>表现</th><th>Missions 的解决</th></tr>
+<tr><td>术语膨胀</td><td>"delegation"、"orchestration"、"workflow" 混用</td><td>归约为 5 种通信模式，只用 4 种</td></tr>
+<tr><td>直接通信</td><td>Agent 点对点通信，状态在多个会话漂移</td><td>禁止 direct communication，中心化编排</td></tr>
+<tr><td>缺乏契约</td><td>测试是"实现后补的"</td><td>先验锁定 CONTRACT.md</td></tr>
+<tr><td>角色模糊</td><td>"Lead Agent" 同时是规划者和执行者</td><td>严格三角色分离</td></tr>
+</table>
+
+<h2 id="architecture">3. 系统架构</h2>
+
+<h3>3.1 整体架构图</h3>
+
+<div class="flowchart">
+<svg width="800" height="500" viewBox="0 0 800 500">
+    <rect width="800" height="500" fill="#f8f9fa" rx="12"/>
+
+    <rect x="250" y="20" width="300" height="50" rx="8" fill="#1a1a2e"/>
+    <text x="400" y="52" text-anchor="middle" fill="#fff" font-size="16" font-weight="bold">👤 人类项目经理</text>
+    <text x="400" y="52" text-anchor="middle" fill="#aaa" font-size="11" dy="18">（只在 milestone 边界介入）</text>
+
+    <line x1="400" y1="70" x2="400" y2="95" stroke="#e94560" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+    <rect x="150" y="100" width="500" height="60" rx="8" fill="#e94560"/>
+    <text x="400" y="128" text-anchor="middle" fill="#fff" font-size="15" font-weight="bold">📋 README.md 编排引擎</text>
+    <text x="400" y="128" text-anchor="middle" fill="#ffcccc" font-size="11" dy="18">自举指令 + 自动路由</text>
+
+    <line x1="250" y1="160" x2="150" y2="200" stroke="#666" stroke-width="2"/>
+    <line x1="400" y1="160" x2="400" y2="200" stroke="#666" stroke-width="2"/>
+    <line x1="550" y1="160" x2="650" y2="200" stroke="#666" stroke-width="2"/>
+
+    <rect x="50" y="200" width="180" height="100" rx="8" fill="#16213e"/>
+    <text x="140" y="230" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">🎯 Orchestrator</text>
+    <text x="140" y="250" text-anchor="middle" fill="#aaa" font-size="11">• 拆解目标</text>
+    <text x="140" y="268" text-anchor="middle" fill="#aaa" font-size="11">• 锁定契约</text>
+    <text x="140" y="286" text-anchor="middle" fill="#aaa" font-size="11">• 创建任务卡片</text>
+
+    <rect x="310" y="200" width="180" height="100" rx="8" fill="#0f3460"/>
+    <text x="400" y="230" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">🔧 Worker</text>
+    <text x="400" y="250" text-anchor="middle" fill="#aaa" font-size="11">• TDD 实现</text>
+    <text x="400" y="268" text-anchor="middle" fill="#aaa" font-size="11">• Fresh Start</text>
+    <text x="400" y="286" text-anchor="middle" fill="#aaa" font-size="11">• 结构化交接</text>
+
+    <rect x="570" y="200" width="180" height="100" rx="8" fill="#533483"/>
+    <text x="660" y="230" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">✅ Validator</text>
+    <text x="660" y="250" text-anchor="middle" fill="#aaa" font-size="11">• 独立验证</text>
+    <text x="660" y="268" text-anchor="middle" fill="#aaa" font-size="11">• 不看实现代码</text>
+    <text x="660" y="286" text-anchor="middle" fill="#aaa" font-size="11">• 只看断言+结果</text>
+
+    <line x1="140" y1="300" x2="400" y2="350" stroke="#666" stroke-width="2"/>
+    <line x1="400" y1="300" x2="400" y2="350" stroke="#666" stroke-width="2"/>
+    <line x1="660" y1="300" x2="400" y2="350" stroke="#666" stroke-width="2"/>
+
+    <rect x="200" y="350" width="400" height="80" rx="8" fill="#1a1a2e" stroke="#e94560" stroke-width="2"/>
+    <text x="400" y="380" text-anchor="middle" fill="#fff" font-size="16" font-weight="bold">💾 文件系统状态机</text>
+    <text x="400" y="400" text-anchor="middle" fill="#aaa" font-size="12">文件夹 = 状态 | 文件移动 = 流转 | Markdown = 指令</text>
+    <text x="400" y="418" text-anchor="middle" fill="#888" font-size="11">02-ready → 03-running → 04-review → 05-done → 07-pr</text>
+
+    <defs>
+        <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#e94560"/>
+        </marker>
+    </defs>
+</svg>
+</div>
+
+<h3>3.2 数据流图</h3>
+
+<div class="flowchart">
+<svg width="800" height="600" viewBox="0 0 800 600">
+    <rect width="800" height="600" fill="#f8f9fa" rx="12"/>
+
+    <rect x="320" y="20" width="160" height="40" rx="6" fill="#1a1a2e"/>
+    <text x="400" y="46" text-anchor="middle" fill="#fff" font-size="13">🎯 用户目标</text>
+
+    <line x1="400" y1="60" x2="400" y2="85" stroke="#e94560" stroke-width="2"/>
+
+    <rect x="280" y="90" width="240" height="50" rx="6" fill="#e94560"/>
+    <text x="400" y="112" text-anchor="middle" fill="#fff" font-size="13" font-weight="bold">🎯 Orchestrator</text>
+    <text x="400" y="112" text-anchor="middle" fill="#ffcccc" font-size="10" dy="16">规划 + 锁定契约</text>
+
+    <line x1="400" y1="140" x2="200" y2="180" stroke="#666" stroke-width="2"/>
+    <line x1="400" y1="140" x2="600" y2="180" stroke="#666" stroke-width="2"/>
+
+    <rect x="80" y="170" width="200" height="50" rx="6" fill="#16213e" stroke="#e94560" stroke-width="2"/>
+    <text x="180" y="192" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold">📜 CONTRACT.md</text>
+    <text x="180" y="192" text-anchor="middle" fill="#aaa" font-size="9" dy="16">锁定契约（不可变）</text>
+
+    <rect x="520" y="170" width="200" height="50" rx="6" fill="#0f3460"/>
+    <text x="620" y="192" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold">📋 02-ready/*.md</text>
+    <text x="620" y="192" text-anchor="middle" fill="#aaa" font-size="9" dy="16">任务卡片队列</text>
+
+    <line x1="620" y1="220" x2="620" y2="260" stroke="#666" stroke-width="2"/>
+
+    <rect x="520" y="265" width="200" height="50" rx="6" fill="#533483"/>
+    <text x="620" y="287" text-anchor="middle" fill="#fff" font-size="13" font-weight="bold">🔧 Worker</text>
+    <text x="620" y="287" text-anchor="middle" fill="#ddd" font-size="10" dy="16">TDD 实现 + Git Commit</text>
+
+    <line x1="620" y1="315" x2="620" y2="355" stroke="#666" stroke-width="2"/>
+
+    <rect x="520" y="360" width="200" height="40" rx="6" fill="#f39c12"/>
+    <text x="620" y="385" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold">▶️ 03-running/</text>
+
+    <line x1="520" y1="380" x2="320" y2="380" stroke="#666" stroke-width="2"/>
+
+    <rect x="120" y="360" width="200" height="40" rx="6" fill="#3498db"/>
+    <text x="220" y="385" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold">👁️ 04-review/</text>
+
+    <line x1="220" y1="400" x2="220" y2="440" stroke="#666" stroke-width="2"/>
+
+    <rect x="120" y="445" width="200" height="50" rx="6" fill="#e74c3c"/>
+    <text x="220" y="467" text-anchor="middle" fill="#fff" font-size="13" font-weight="bold">✅ Validator</text>
+    <text x="220" y="467" text-anchor="middle" fill="#ffcccc" font-size="10" dy="16">独立验证（不看代码）</text>
+
+    <line x1="220" y1="495" x2="100" y2="540" stroke="#27ae60" stroke-width="2"/>
+    <line x1="220" y1="495" x2="340" y2="540" stroke="#e74c3c" stroke-width="2"/>
+
+    <rect x="20" y="545" width="160" height="40" rx="6" fill="#27ae60"/>
+    <text x="100" y="570" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold">✅ 05-done/</text>
+
+    <rect x="260" y="545" width="160" height="40" rx="6" fill="#e74c3c"/>
+    <text x="340" y="570" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold">🐛 06-fix/</text>
+
+    <line x1="420" y1="565" x2="520" y2="565" stroke="#e74c3c" stroke-width="2" stroke-dasharray="5,5"/>
+    <text x="470" y="560" fill="#e74c3c" font-size="10">修复后重新验证</text>
+
+    <line x1="100" y1="545" x2="100" y2="500" stroke="#666" stroke-width="2"/>
+    <line x1="100" y1="500" x2="620" y2="500" stroke="#666" stroke-width="2"/>
+    <line x1="620" y1="500" x2="620" y2="460" stroke="#666" stroke-width="2"/>
+
+    <rect x="520" y="410" width="200" height="50" rx="6" fill="#9b59b6"/>
+    <text x="620" y="432" text-anchor="middle" fill="#fff" font-size="13" font-weight="bold">📝 PR Author</text>
+    <text x="620" y="432" text-anchor="middle" fill="#eee" font-size="10" dy="16">生成 PR 描述</text>
+
+    <rect x="520" y="545" width="200" height="40" rx="6" fill="#f39c12" stroke="#e94560" stroke-width="2"/>
+    <text x="620" y="570" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold">📤 07-pr/PR-*.md</text>
+
+    <rect x="520" y="20" width="200" height="40" rx="6" fill="#1a1a2e" stroke="#e94560" stroke-width="2"/>
+    <text x="620" y="46" text-anchor="middle" fill="#fff" font-size="12">👤 人类审查员</text>
+
+    <line x1="620" y1="60" x2="620" y2="545" stroke="#e94560" stroke-width="2" stroke-dasharray="8,4"/>
+    <text x="635" y="300" fill="#e94560" font-size="10" transform="rotate(90, 635, 300)">人工审查 + 合并</text>
+</svg>
+</div>
+
+<h2 id="state-machine">4. 状态机设计</h2>
+
+<h3>4.1 文件夹状态机脑图</h3>
+
+<div class="mindmap">
+<svg width="800" height="550" viewBox="0 0 800 550">
+    <rect width="800" height="550" fill="#f8f9fa" rx="12"/>
+
+    <circle cx="400" cy="275" r="60" fill="#1a1a2e" stroke="#e94560" stroke-width="3"/>
+    <text x="400" y="265" text-anchor="middle" fill="#fff" font-size="13" font-weight="bold">文件系统</text>
+    <text x="400" y="285" text-anchor="middle" fill="#e94560" font-size="11">状态机</text>
+
+    <rect x="50" y="50" width="160" height="50" rx="8" fill="#16213e"/>
+    <text x="130" y="72" text-anchor="middle" fill="#fff" font-size="11" font-weight="bold">00-orchestrate</text>
+    <text x="130" y="72" text-anchor="middle" fill="#aaa" font-size="9" dy="16">规划草稿</text>
+    <line x1="210" y1="75" x2="345" y2="235" stroke="#666" stroke-width="1.5"/>
+
+    <rect x="50" y="130" width="160" height="50" rx="8" fill="#0f3460"/>
+    <text x="130" y="152" text-anchor="middle" fill="#fff" font-size="11" font-weight="bold">01-contract</text>
+    <text x="130" y="152" text-anchor="middle" fill="#aaa" font-size="9" dy="16">契约锁定</text>
+    <line x1="210" y1="155" x2="345" y2="250" stroke="#666" stroke-width="1.5"/>
+
+    <rect x="50" y="210" width="160" height="50" rx="8" fill="#27ae60"/>
+    <text x="130" y="232" text-anchor="middle" fill="#fff" font-size="11" font-weight="bold">02-ready</text>
+    <text x="130" y="232" text-anchor="middle" fill="#fff" font-size="9" dy="16">待领取 ⏳</text>
+    <line x1="210" y1="235" x2="345" y2="265" stroke="#27ae60" stroke-width="2"/>
+
+    <rect x="50" y="290" width="160" height="50" rx="8" fill="#f39c12"/>
+    <text x="130" y="312" text-anchor="middle" fill="#fff" font-size="11" font-weight="bold">03-running</text>
+    <text x="130" y="312" text-anchor="middle" fill="#fff" font-size="9" dy="16">进行中 ▶️</text>
+    <line x1="210" y1="315" x2="345" y2="280" stroke="#f39c12" stroke-width="2"/>
+
+    <rect x="50" y="370" width="160" height="50" rx="8" fill="#3498db"/>
+    <text x="130" y="392" text-anchor="middle" fill="#fff" font-size="11" font-weight="bold">04-review</text>
+    <text x="130" y="392" text-anchor="middle" fill="#fff" font-size="9" dy="16">待验证 👁️</text>
+    <line x1="210" y1="395" x2="345" y2="295" stroke="#3498db" stroke-width="2"/>
+
+    <rect x="590" y="130" width="160" height="50" rx="8" fill="#27ae60"/>
+    <text x="670" y="152" text-anchor="middle" fill="#fff" font-size="11" font-weight="bold">05-done</text>
+    <text x="670" y="152" text-anchor="middle" fill="#fff" font-size="9" dy="16">已完成 ✅</text>
+    <line x1="590" y1="155" x2="455" y2="250" stroke="#27ae60" stroke-width="2"/>
+
+    <rect x="590" y="210" width="160" height="50" rx="8" fill="#e74c3c"/>
+    <text x="670" y="232" text-anchor="middle" fill="#fff" font-size="11" font-weight="bold">06-fix</text>
+    <text x="670" y="232" text-anchor="middle" fill="#fff" font-size="9" dy="16">待修复 🐛</text>
+    <line x1="590" y1="235" x2="455" y2="265" stroke="#e74c3c" stroke-width="2"/>
+
+    <rect x="590" y="290" width="160" height="50" rx="8" fill="#9b59b6"/>
+    <text x="670" y="312" text-anchor="middle" fill="#fff" font-size="11" font-weight="bold">07-pr</text>
+    <text x="670" y="312" text-anchor="middle" fill="#fff" font-size="9" dy="16">待提交 📤</text>
+    <line x1="590" y1="315" x2="455" y2="280" stroke="#9b59b6" stroke-width="2"/>
+
+    <rect x="590" y="370" width="160" height="50" rx="8" fill="#1a1a2e"/>
+    <text x="670" y="392" text-anchor="middle" fill="#fff" font-size="11" font-weight="bold">08-merged</text>
+    <text x="670" y="392" text-anchor="middle" fill="#aaa" font-size="9" dy="16">已合并 🎉</text>
+    <line x1="590" y1="395" x2="455" y2="295" stroke="#666" stroke-width="1.5"/>
+
+    <rect x="590" y="450" width="160" height="50" rx="8" fill="#7f8c8d"/>
+    <text x="670" y="472" text-anchor="middle" fill="#fff" font-size="11" font-weight="bold">archive</text>
+    <text x="670" y="472" text-anchor="middle" fill="#fff" font-size="9" dy="16">历史归档 📦</text>
+    <line x1="590" y1="475" x2="455" y2="315" stroke="#7f8c8d" stroke-width="1.5"/>
+
+    <text x="280" y="255" fill="#27ae60" font-size="10" font-weight="bold">mv</text>
+    <text x="280" y="285" fill="#f39c12" font-size="10" font-weight="bold">mv</text>
+    <text x="280" y="305" fill="#3498db" font-size="10" font-weight="bold">mv</text>
+    <text x="510" y="255" fill="#27ae60" font-size="10" font-weight="bold">pass</text>
+    <text x="510" y="285" fill="#e74c3c" font-size="10" font-weight="bold">fail</text>
+    <text x="510" y="305" fill="#9b59b6" font-size="10" font-weight="bold">PR</text>
+</svg>
+</div>
+
+<h3>4.2 状态流转规则</h3>
+<table>
+<tr><th>当前状态</th><th>触发条件</th><th>下一状态</th><th>操作</th></tr>
+<tr><td><span class="tag tag-green">02-ready</span></td><td>Worker 领取</td><td><span class="tag tag-yellow">03-running</span></td><td><code>mv</code> 文件</td></tr>
+<tr><td><span class="tag tag-yellow">03-running</span></td><td>Worker 完成</td><td><span class="tag tag-blue">04-review</span></td><td><code>mv</code> + 填写 Handoff</td></tr>
+<tr><td><span class="tag tag-blue">04-review</span></td><td>Validator 通过</td><td><span class="tag tag-green">05-done</span></td><td><code>mv</code> 文件</td></tr>
+<tr><td><span class="tag tag-blue">04-review</span></td><td>Validator 不通过</td><td><span class="tag tag-red">06-fix</span></td><td>创建 fix 卡片 + 归档</td></tr>
+<tr><td><span class="tag tag-red">06-fix</span></td><td>Worker 修复完成</td><td><span class="tag tag-blue">04-review</span></td><td><code>mv</code> 文件</td></tr>
+<tr><td><span class="tag tag-green">05-done</span></td><td>Milestone 全部完成</td><td><span class="tag tag-blue">07-pr</span></td><td>PR Author 生成描述</td></tr>
+<tr><td><span class="tag tag-blue">07-pr</span></td><td>人类合并 PR</td><td><span class="tag tag-green">08-merged</span></td><td><code>mv</code> 文件</td></tr>
+</table>
+
+<h3>4.3 串行约束原理</h3>
+
+<pre>
+┌─────────────────────────────────────────────────────────────┐
+│  串行写（Serial Write）                                      │
+│  ─────────────────────                                       │
+│  • 文件写入（代码修改）                                       │
+│  • Git commit                                               │
+│  • 状态移动（mv 文件）                                        │
+│  • Handoff 填写                                             │
+│                                                             │
+│  并行读（Parallel Read）                                     │
+│  ─────────────────────                                       │
+│  • Codebase 检索                                            │
+│  • API 文档调研                                             │
+│  • 设计阶段研究                                             │
+│  • 共享只读文件（AGENTS.md, CONTRACT.md）                    │
+└─────────────────────────────────────────────────────────────┘
+</pre>
+
+<p><strong>数学原理</strong>：串行执行每步错误率 0.1%，100 步累计成功率 90%。并行让每步错误率涨到 1%，100 步累计成功率暴跌到 36%。<strong>长周期任务的正确性是复利</strong>。</p>
+
+<h2 id="files">5. 文件结构详解</h2>
+
+<h3>5.1 核心文件脑图</h3>
+
+<div class="mindmap">
+<svg width="800" height="500" viewBox="0 0 800 500">
+    <rect width="800" height="500" fill="#f8f9fa" rx="12"/>
+
+    <rect x="320" y="20" width="160" height="50" rx="8" fill="#1a1a2e"/>
+    <text x="400" y="42" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">.missions/</text>
+    <text x="400" y="42" text-anchor="middle" fill="#aaa" font-size="10" dy="18">项目根目录</text>
+
+    <rect x="50" y="120" width="180" height="70" rx="8" fill="#e94560"/>
+    <text x="140" y="145" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold">README.md</text>
+    <text x="140" y="145" text-anchor="middle" fill="#ffcccc" font-size="9" dy="16">编排引擎</text>
+    <text x="140" y="145" text-anchor="middle" fill="#ffcccc" font-size="9" dy="30">自举指令 + 自动路由</text>
+    <line x1="320" y1="55" x2="230" y2="120" stroke="#e94560" stroke-width="2"/>
+
+    <rect x="310" y="120" width="180" height="70" rx="8" fill="#16213e"/>
+    <text x="400" y="145" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold">AGENTS.md</text>
+    <text x="400" y="145" text-anchor="middle" fill="#aaa" font-size="9" dy="16">三角色宪法</text>
+    <text x="400" y="145" text-anchor="middle" fill="#aaa" font-size="9" dy="30">Orchestrator/Worker/Validator</text>
+    <line x1="400" y1="70" x2="400" y2="120" stroke="#16213e" stroke-width="2"/>
+
+    <rect x="570" y="120" width="180" height="70" rx="8" fill="#0f3460"/>
+    <text x="660" y="145" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold">CONTRACT.md</text>
+    <text x="660" y="145" text-anchor="middle" fill="#aaa" font-size="9" dy="16">锁定契约</text>
+    <text x="660" y="145" text-anchor="middle" fill="#aaa" font-size="9" dy="30">先验验收标准（不可变）</text>
+    <line x1="480" y1="55" x2="570" y2="120" stroke="#0f3460" stroke-width="2"/>
+
+    <rect x="50" y="240" width="700" height="220" rx="8" fill="#f0f0f0" stroke="#ddd" stroke-width="1"/>
+    <text x="400" y="265" text-anchor="middle" fill="#666" font-size="12" font-weight="bold">状态文件夹（文件系统状态机）</text>
+
+    <rect x="70" y="285" width="80" height="40" rx="6" fill="#27ae60"/>
+    <text x="110" y="305" text-anchor="middle" fill="#fff" font-size="10">02-ready</text>
+    <text x="110" y="305" text-anchor="middle" fill="#fff" font-size="8" dy="12">待领取</text>
+
+    <rect x="170" y="285" width="80" height="40" rx="6" fill="#f39c12"/>
+    <text x="210" y="305" text-anchor="middle" fill="#fff" font-size="10">03-running</text>
+    <text x="210" y="305" text-anchor="middle" fill="#fff" font-size="8" dy="12">进行中</text>
+
+    <rect x="270" y="285" width="80" height="40" rx="6" fill="#3498db"/>
+    <text x="310" y="305" text-anchor="middle" fill="#fff" font-size="10">04-review</text>
+    <text x="310" y="305" text-anchor="middle" fill="#fff" font-size="8" dy="12">待验证</text>
+
+    <rect x="370" y="285" width="80" height="40" rx="6" fill="#27ae60"/>
+    <text x="410" y="305" text-anchor="middle" fill="#fff" font-size="10">05-done</text>
+    <text x="410" y="305" text-anchor="middle" fill="#fff" font-size="8" dy="12">已完成</text>
+
+    <rect x="470" y="285" width="80" height="40" rx="6" fill="#e74c3c"/>
+    <text x="510" y="305" text-anchor="middle" fill="#fff" font-size="10">06-fix</text>
+    <text x="510" y="305" text-anchor="middle" fill="#fff" font-size="8" dy="12">待修复</text>
+
+    <rect x="570" y="285" width="80" height="40" rx="6" fill="#9b59b6"/>
+    <text x="610" y="305" text-anchor="middle" fill="#fff" font-size="10">07-pr</text>
+    <text x="610" y="305" text-anchor="middle" fill="#fff" font-size="8" dy="12">待提交</text>
+
+    <rect x="670" y="285" width="60" height="40" rx="6" fill="#1a1a2e"/>
+    <text x="700" y="305" text-anchor="middle" fill="#fff" font-size="10">08-merged</text>
+    <text x="700" y="305" text-anchor="middle" fill="#aaa" font-size="8" dy="12">已合并</text>
+
+    <line x1="150" y1="305" x2="170" y2="305" stroke="#666" stroke-width="1.5" marker-end="url(#arrow2)"/>
+    <line x1="250" y1="305" x2="270" y2="305" stroke="#666" stroke-width="1.5" marker-end="url(#arrow2)"/>
+    <line x1="350" y1="305" x2="370" y2="305" stroke="#666" stroke-width="1.5" marker-end="url(#arrow2)"/>
+    <line x1="450" y1="305" x2="470" y2="305" stroke="#666" stroke-width="1.5" marker-end="url(#arrow2)"/>
+    <line x1="550" y1="305" x2="570" y2="305" stroke="#666" stroke-width="1.5" marker-end="url(#arrow2)"/>
+    <line x1="650" y1="305" x2="670" y2="305" stroke="#666" stroke-width="1.5" marker-end="url(#arrow2)"/>
+
+    <path d="M 510 325 Q 510 380 310 380 Q 110 380 110 325" fill="none" stroke="#e74c3c" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arrow2)"/>
+    <text x="310" y="395" text-anchor="middle" fill="#e74c3c" font-size="9">修复后重新进入 review</text>
+
+    <rect x="70" y="340" width="100" height="35" rx="6" fill="#7f8c8d"/>
+    <text x="120" y="355" text-anchor="middle" fill="#fff" font-size="10">00-orchestrate</text>
+    <text x="120" y="355" text-anchor="middle" fill="#ddd" font-size="8" dy="12">规划草稿</text>
+
+    <rect x="190" y="340" width="100" height="35" rx="6" fill="#7f8c8d"/>
+    <text x="240" y="355" text-anchor="middle" fill="#fff" font-size="10">01-contract</text>
+    <text x="240" y="355" text-anchor="middle" fill="#ddd" font-size="8" dy="12">契约归档</text>
+
+    <rect x="310" y="340" width="80" height="35" rx="6" fill="#7f8c8d"/>
+    <text x="350" y="355" text-anchor="middle" fill="#fff" font-size="10">archive</text>
+    <text x="350" y="355" text-anchor="middle" fill="#ddd" font-size="8" dy="12">历史归档</text>
+
+    <rect x="410" y="340" width="80" height="35" rx="6" fill="#7f8c8d"/>
+    <text x="450" y="355" text-anchor="middle" fill="#fff" font-size="10">handoffs</text>
+    <text x="450" y="355" text-anchor="middle" fill="#ddd" font-size="8" dy="12">交接记录</text>
+
+    <defs>
+        <marker id="arrow2" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+            <polygon points="0 0, 8 3, 0 6" fill="#666"/>
+        </marker>
+    </defs>
+</svg>
+</div>
+
+<h3>5.2 任务卡片结构</h3>
+
+<pre>
+---
+id: F-001
+type: implementation | fix
+agent: worker
+milestone: M1
+contract_assertions: [VAL-001, VAL-002]
+parent: null | F-001
+created: 2026-06-28T14:00:00
+---
+
+# {ID}: {标题}
+
+## 上下文
+- 前置依赖
+- 需要读取的文件
+
+## 执行要求
+1. 具体步骤
+2. TDD 要求
+3. 覆盖率要求
+
+## Handoff（Worker 填写）
+- [ ] 检查项
+- Git Commit 信息
+- 发现的问题与妥协
+
+## Validation Report（Validator 填写）
+- 检查结果
+- Issues（blocking / non-blocking / suggestion）
+- Verdict
+
+## 状态历史
+- 时间线记录
+</pre>
+
+<h2 id="roles">6. 角色协议</h2>
+
+<h3>6.1 四角色职责矩阵</h3>
+
+<table>
+<tr><th>角色</th><th>输入</th><th>输出</th><th>核心职责</th><th>绝对禁止</th></tr>
+<tr><td><span class="tag tag-red">Orchestrator</span></td><td>用户目标</td><td>CONTRACT + 任务卡片</td><td>规划、拆解、锁定契约</td><td>不碰代码、不改契约</td></tr>
+<tr><td><span class="tag tag-yellow">Worker</span></td><td>任务卡片 + CONTRACT</td><td>Git Commit + Handoff</td><td>TDD 实现、Fresh Start</td><td>不做验收、不通信</td></tr>
+<tr><td><span class="tag tag-blue">Validator</span></td><td>CONTRACT + Git 成品</td><td>Validation Report</td><td>独立验证、不看代码</td><td>不改源码、不看推理</td></tr>
+<tr><td><span class="tag tag-green">PR Author</span></td><td>05-done/ 同 Milestone</td><td>07-pr/PR-*.md</td><td>汇总证据、生成 PR</td><td>不改代码、不操作 API</td></tr>
+</table>
+
+<h3>6.2 角色分离原理</h3>
+
+<div class="flowchart">
+<svg width="800" height="350" viewBox="0 0 800 350">
+    <rect width="800" height="350" fill="#f8f9fa" rx="12"/>
+
+    <text x="400" y="30" text-anchor="middle" fill="#1a1a2e" font-size="16" font-weight="bold">为什么实现者和验证者必须分离？</text>
+
+    <rect x="50" y="60" width="300" height="250" rx="8" fill="#f8d7da" stroke="#e74c3c" stroke-width="2"/>
+    <text x="200" y="85" text-anchor="middle" fill="#721c24" font-size="14" font-weight="bold">❌ 不分离（单 Agent）</text>
+
+    <rect x="80" y="110" width="240" height="50" rx="6" fill="#e74c3c"/>
+    <text x="200" y="130" text-anchor="middle" fill="#fff" font-size="12">实现代码</text>
+    <text x="200" y="130" text-anchor="middle" fill="#ffcccc" font-size="9" dy="16">"我写得很对"</text>
+
+    <line x1="200" y1="160" x2="200" y2="190" stroke="#e74c3c" stroke-width="2"/>
+
+    <rect x="80" y="195" width="240" height="50" rx="6" fill="#c0392b"/>
+    <text x="200" y="215" text-anchor="middle" fill="#fff" font-size="12">自我评估</text>
+    <text x="200" y="215" text-anchor="middle" fill="#ffcccc" font-size="9" dy="16">"确实是对的"（合理化偏见）</text>
+
+    <line x1="200" y1="245" x2="200" y2="275" stroke="#e74c3c" stroke-width="2"/>
+
+    <rect x="80" y="280" width="240" height="25" rx="6" fill="#f39c12"/>
+    <text x="200" y="297" text-anchor="middle" fill="#fff" font-size="11">结果：测试通过，但有隐藏 bug</text>
+
+    <rect x="450" y="60" width="300" height="250" rx="8" fill="#d4edda" stroke="#27ae60" stroke-width="2"/>
+    <text x="600" y="85" text-anchor="middle" fill="#155724" font-size="14" font-weight="bold">✅ 分离（Missions）</text>
+
+    <rect x="480" y="110" width="110" height="50" rx="6" fill="#27ae60"/>
+    <text x="535" y="130" text-anchor="middle" fill="#fff" font-size="12">Worker</text>
+    <text x="535" y="130" text-anchor="middle" fill="#d4edda" font-size="9" dy="16">实现代码</text>
+
+    <rect x="610" y="110" width="110" height="50" rx="6" fill="#3498db"/>
+    <text x="665" y="130" text-anchor="middle" fill="#fff" font-size="12">Validator</text>
+    <text x="665" y="130" text-anchor="middle" fill="#d1ecf1" font-size="9" dy="16">独立验证</text>
+
+    <line x1="535" y1="160" x2="600" y2="200" stroke="#666" stroke-width="1.5"/>
+    <line x1="665" y1="160" x2="600" y2="200" stroke="#666" stroke-width="1.5"/>
+
+    <rect x="480" y="205" width="240" height="50" rx="6" fill="#1a1a2e"/>
+    <text x="600" y="225" text-anchor="middle" fill="#fff" font-size="12">CONTRACT.md</text>
+    <text x="600" y="225" text-anchor="middle" fill="#aaa" font-size="9" dy="16">共同的标准（先验锁定）</text>
+
+    <line x1="600" y1="255" x2="600" y2="285" stroke="#27ae60" stroke-width="2"/>
+
+    <rect x="480" y="290" width="240" height="25" rx="6" fill="#27ae60"/>
+    <text x="600" y="307" text-anchor="middle" fill="#fff" font-size="11">结果：客观验证，发现隐藏问题</text>
+
+    <text x="400" y="180" text-anchor="middle" fill="#666" font-size="12">VS</text>
+</svg>
+</div>
+
+<h2 id="workflow">7. 工作流详解</h2>
+
+<h3>7.1 完整生命周期</h3>
+
+<pre>
+Phase 1: Planning（规划）
+─────────────────────────
+人类: "目标是构建一个支持 JWT 登录的 FastAPI 系统"
+   │
+   ▼
+Orchestrator:
+   ├─ 问: "PostgreSQL 还是 SQLite?"
+   ├─ 问: "bcrypt 还是 argon2?"
+   └─ 问: "需要 refresh token 吗?"
+   │
+   ▼
+人类: "PostgreSQL, bcrypt, 需要"
+   │
+   ▼
+Orchestrator:
+   ├─ 生成 CONTRACT.md（锁定）
+   ├─ 生成 02-ready/F-001.md
+   └─ 生成 02-ready/F-002.md
+   │
+   ▼
+Phase 2: Implementation（实现）
+────────────────────────────
+Worker:
+   ├─ mv F-001.md 03-running/
+   ├─ Fresh Start
+   ├─ 先写 tests/test_auth.py
+   ├─ 再写 src/routers/auth.py
+   ├─ pytest → pass
+   ├─ git commit
+   ├─ 填写 Handoff
+   └─ mv F-001.md 04-review/
+   │
+   ▼
+Phase 3: Validation（验证）
+──────────────────────────
+Validator:
+   ├─ 读 CONTRACT.md VAL-001/002
+   ├─ 运行 pytest（不看实现代码）
+   ├─ 运行 mypy / ruff
+   ├─ 发现: blocking issue（缺少 refresh_token）
+   ├─ 填写 Validation Report
+   ├─ 创建 06-fix/F-001-fix-001.md
+   └─ mv F-001.md archive/
+   │
+   ▼
+Phase 4: Fix（修复）
+───────────────────
+Worker:
+   ├─ mv F-001-fix-001.md 03-running/
+   ├─ 读父任务 Validation Report
+   ├─ 修复 refresh_token
+   ├─ 更新测试
+   ├─ git commit
+   ├─ 填写 Handoff
+   └─ mv F-001-fix-001.md 04-review/
+   │
+   ▼
+Phase 5: Re-validation（重新验证）
+────────────────────────────────
+Validator:
+   ├─ 重新运行测试
+   ├─ 通过（零 blocking）
+   └─ mv F-001-fix-001.md 05-done/
+   │
+   ▼
+Phase 6: PR（提交）
+───────────────────
+PR Author:
+   ├─ 检测 M1 所有 Features 在 05-done/
+   ├─ 汇总 git diff --stat
+   ├─ 汇总 pytest --cov
+   ├─ 汇总 Validation Reports
+   ├─ 生成 Contract Coverage 矩阵
+   ├─ 标注 Review Notes
+   └─ 生成 07-pr/PR-M1.md
+   │
+   ▼
+人类:
+   ├─ 复制粘贴到 GitHub
+   ├─ 审查 Review Notes
+   ├─ 合并 PR
+   └─ mv PR-M1.md 08-merged/
+   │
+   ▼
+🎉 Mission Complete
+</pre>
+
+<h3>7.2 关键设计决策</h3>
+
+<h4>决策 1: 为什么禁止 Direct Communication？</h4>
+
+<pre>
+Direct Communication（点对点）:
+  Agent A ──► Agent B
+  Agent B ──► Agent C
+  Agent C ──► Agent A
+
+  问题: 状态在多个会话漂移，没有 single source of truth
+  结果: 长周期任务中，谁也不知道当前真实状态
+
+Missions（中心化编排）:
+  Orchestrator
+       │
+       ├──► Worker
+       │     │
+       │     └──► Git + Handoff
+       │
+       └──► Validator
+             │
+             └──► Validation Report
+
+  优势: 所有状态在文件系统中，任何时刻可审计
+</pre>
+
+<h4>决策 2: 为什么先写 CONTRACT 再写代码？</h4>
+
+<pre>
+传统流程:
+  写代码 ──► 写测试 ──► "测试确认了我的实现"
+
+  问题: 测试被实现塑造，成为"对实现的追认"
+  结果: 测试通过了，但可能没覆盖边界条件
+
+Missions 流程:
+  锁定 CONTRACT ──► 写测试（覆盖 CONTRACT）──► 写实现（满足测试）
+
+  优势: 人为切断"实现细节回流到验收标准"的路径
+  结果: 测试是真正独立的验证
+</pre>
+
+<h4>决策 3: 为什么用文件系统而不是数据库？</h4>
+
+<pre>
+数据库状态机:
+  ┌─────────┐     ┌─────────┐
+  │  MySQL  │     │  Redis  │
+  │  table  │     │  queue  │
+  └────┬────┘     └────┬────┘
+       │               │
+       └───────┬───────┘
+               ▼
+         ┌──────────┐
+         │  Python  │
+         │  script  │
+         └────┬─────┘
+              │
+              ▼
+         需要安装、配置、维护
+
+文件系统状态机:
+  ┌─────────┐
+  │  ls     │
+  │  mv     │
+  │  cat    │
+  └────┬────┘
+       │
+       ▼
+  零依赖、可版本控制、可审计、可迁移
+</pre>
+
+<h2 id="comparison">8. 与现有方案对比</h2>
+
+<h3>8.1 与 Claude Code /goal 对比</h3>
+<table>
+<tr><th>维度</th><th>/goal</th><th>Missions</th></tr>
+<tr><td>状态存储</td><td>Claude 上下文（不可见）</td><td>文件系统（纯文本）</td></tr>
+<tr><td>角色分离</td><td><span class="tag tag-red">❌ 无</span></td><td><span class="tag tag-green">✅ 三角色强制分离</span></td></tr>
+<tr><td>验证契约</td><td><span class="tag tag-red">❌ 无</span></td><td><span class="tag tag-green">✅ 先验锁定</span></td></tr>
+<tr><td>Fresh Context</td><td><span class="tag tag-red">❌ 依赖历史</span></td><td><span class="tag tag-green">✅ 强制 Fresh Start</span></td></tr>
+<tr><td>串行约束</td><td><span class="tag tag-red">❌ 无</span></td><td><span class="tag tag-green">✅ 文件系统级串行</span></td></tr>
+<tr><td>可审计性</td><td><span class="tag tag-red">❌ 差</span></td><td><span class="tag tag-green">✅ 完整 Handoff + Report</span></td></tr>
+<tr><td>可迁移性</td><td><span class="tag tag-red">❌ 绑定会话</span></td><td><span class="tag tag-green">✅ 任何 Claude 实例可续跑</span></td></tr>
+<tr><td>自动化程度</td><td>半自动</td><td>全自动（除 PR 合并）</td></tr>
+</table>
+
+<h3>8.2 与 AutoGPT / LangChain Agent 对比</h3>
+<table>
+<tr><th>维度</th><th>AutoGPT</th><th>LangChain</th><th>Missions</th></tr>
+<tr><td>目标</td><td>通用任务自动化</td><td>LLM 应用构建</td><td>软件工程交付</td></tr>
+<tr><td>状态管理</td><td>内存/向量数据库</td><td>链式调用</td><td>文件系统状态机</td></tr>
+<tr><td>验证机制</td><td>自我评估</td><td>回调函数</td><td>独立 Validator</td></tr>
+<tr><td>契约机制</td><td><span class="tag tag-red">❌ 无</span></td><td><span class="tag tag-red">❌ 无</span></td><td><span class="tag tag-green">✅ 先验 CONTRACT</span></td></tr>
+<tr><td>人类介入</td><td>频繁（需要监督）</td><td>中等</td><td>最少（milestone 边界）</td></tr>
+<tr><td>可解释性</td><td>低</td><td>中</td><td>高（完整文件记录）</td></tr>
+</table>
+
+<h3>8.3 与 Factory 原版 Missions 对比</h3>
+<table>
+<tr><th>维度</th><th>Factory Missions</th><th>本 Markdown 原型</th></tr>
+<tr><td>实现语言</td><td>Python + 内部系统</td><td>纯 Markdown + 文件系统</td></tr>
+<tr><td>部署方式</td><td>企业级 SaaS</td><td>任何 Claude Code 实例</td></tr>
+<tr><td>状态机</td><td>内部数据库</td><td>文件夹</td></tr>
+<tr><td>通信模式</td><td>5 种（用 4 种）</td><td>同上</td></tr>
+<tr><td>核心设计</td><td>完全一致</td><td>完全一致</td></tr>
+<tr><td>适用场景</td><td>企业级长周期任务</td><td>个人/小团队项目</td></tr>
+</table>
+
+<h2 id="future">9. 局限性与未来</h2>
+
+<h3>9.1 当前局限性</h3>
+<ol>
+<li><strong>PR 合并仍需人工</strong>：Agent 无法直接操作 GitHub API（安全考虑）</li>
+<li><strong>冲突解决</strong>：并发修改同一文件时，依赖 Git 合并，Agent 无法自动解决复杂冲突</li>
+<li><strong>外部依赖</strong>：数据库迁移、第三方 API 密钥等仍需人工配置</li>
+<li><strong>创造性设计</strong>：架构层面的重大决策仍需人类（Orchestrator 只能做范围限定内的规划）</li>
+</ol>
+
+<h3>9.2 未来方向</h3>
+
+<pre>
+v0.2: 增加 Milestone 依赖图（DAG）
+  └── 02-ready/ 支持任务依赖，自动拓扑排序
+
+v0.3: 增加 Token 预算管理
+  └── README.md 中增加预算看板，超限自动暂停
+
+v0.4: 增加多模型支持
+  └── Worker 用 Claude，Validator 用 GPT-4，Orchestrator 用 Gemini
+
+v0.5: 增加 CI/CD 集成
+  └── 07-pr/ 直接触发 GitHub Actions，PR 合并后自动归档
+
+v1.0: 自举式改进
+  └── 用 Missions 框架自身来改进 Missions 框架
+</pre>
+
+<hr style="margin: 50px 0; border: none; border-top: 2px solid #e94560;">
+
+<blockquote style="background: #1a1a2e; color: #fff; border-left: 4px solid #e94560;">
+<p style="margin: 0; font-size: 1.1em; font-style: italic;">"文件夹即状态机，Markdown 即指令，文件移动即流转。"</p>
+<p style="margin: 10px 0 0; color: #aaa; font-size: 0.9em;">— Missions 框架设计哲学</p>
+</blockquote>
+
+</div>
+</body>
+</html>
